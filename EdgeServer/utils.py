@@ -65,3 +65,8 @@ def offload_task(complexity_a, complexity_b):
         return True
 
     return False
+
+def print_matrix(matrix):
+    for row in matrix:
+        print(' '.join([str(elem) for elem in row]))
+    print()

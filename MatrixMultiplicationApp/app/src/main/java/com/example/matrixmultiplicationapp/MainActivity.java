@@ -9,9 +9,13 @@ import android.widget.Button;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import org.json.JSONObject;
+
+import java.io.IOException;
 import java.util.Random;
 
 import okhttp3.FormBody;
+import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
@@ -87,20 +91,28 @@ public class MainActivity extends AppCompatActivity {
 
                     String matrixAString = matrixToString(matrixA);
                     String matrixBString = matrixToString(matrixB);
-    
-                    RequestBody formBody = new FormBody.Builder()
-                            .add("matrixSize", String.valueOf(matrixSize))
-                            .add("matrixA", matrixAString)
-                            .add("matrixB", matrixBString)
-                            .build();
-    
+
+                    JSONObject json = new JSONObject();
+                    json.put("matrixSize", matrixSize);
+                    json.put("matrixA", matrixAString);
+                    json.put("matrixB", matrixBString);
+
+                    RequestBody body = RequestBody.create(
+                            MediaType.parse("application/json; charset=utf-8"),
+                            json.toString()
+                    );
+
                     Request request = new Request.Builder()
-                            .url("http://127.0.0.1:5000/submit_task")
-                            .post(formBody)
+                            .url("http://10.0.2.2:5000/test")
+                            .post(body)
                             .build();
-    
+
                     Response response = client.newCall(request).execute();
-    
+
+                    if (!response.isSuccessful()) {
+                        throw new IOException("Unexpected code " + response);
+                    }
+
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
