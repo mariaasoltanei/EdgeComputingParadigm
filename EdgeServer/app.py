@@ -16,7 +16,7 @@ app = Flask(__name__)
 # historical_data = db['historical_data']
 
 
-@app.route('/test', methods=['POST'])
+@app.route('/matrices', methods=['POST'])
 def test():
     data = request.get_json()
 

@@ -25,8 +25,8 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MainActivity";
     private static final int MIN_MATRIX_SIZE = 10;
-    private static final int MAX_MATRIX_SIZE = 50;
-    private static final int TASK_INTERVAL_MS = 10000;
+    private static final int MAX_MATRIX_SIZE = 100;
+    private static final int TASK_INTERVAL_MS = 500;
     private final Handler mHandler = new Handler(Looper.getMainLooper());
     private final Random mRandom = new Random();
 
@@ -102,7 +102,7 @@ public class MainActivity extends AppCompatActivity {
                     );
 
                     Request request = new Request.Builder()
-                            .url("http://10.0.2.2:5000/test")
+                            .url("http://10.0.2.2:4000/post_task")
                             .post(body)
                             .build();
 
