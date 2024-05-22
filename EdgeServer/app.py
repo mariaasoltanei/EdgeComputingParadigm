@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 from pymongo import MongoClient
 from datetime import datetime
 from dotenv import load_dotenv
-from utils import string_to_matrix, determine_complexity, matrix_multiplication
+from EdgeServer.Server.utils import string_to_matrix, determine_complexity, matrix_multiplication
 import os
 import requests
 import json
