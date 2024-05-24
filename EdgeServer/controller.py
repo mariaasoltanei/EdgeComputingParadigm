@@ -1,14 +1,12 @@
 from flask import Flask, request, jsonify
 import requests
 import time
-from queue import Queue
 from threading import Thread, Lock
 import csv
-import os
 import json
+import os
 
 app = Flask(__name__)
-task_queue = Queue()
 server_status = {}
 server_load = {}
 all_servers = [
@@ -78,48 +76,32 @@ def check_server_status():
 
         time.sleep(5) 
 
-def find_best_server():
+def find_least_busy_server(exclude=None):
+    min_tasks = float('inf')
     best_server = None
-    min_task_count = float('inf')  # Track the server with the least tasks
-    best_load = None
-    with lock:
-        for server in active_servers:
-            try:
-                response = requests.get(f"{server}/load")
-                if response.status_code == 200:
-                    server_load_info = response.json()
-                    task_count = server_load_info['active_tasks']
-                    # Check if this server has the least tasks and acceptable load
-                    if task_count < min_task_count:
-                        min_task_count = task_count
-                        best_server = server
-            except requests.ConnectionError:
-                continue
+    for server in all_servers:
+        if server == exclude:
+            continue
+        try:
+            response = requests.get(f"{server}/load")
+            if response.status_code == 200 and 'active_tasks' in response.json():
+                tasks = response.json()['active_tasks']
+                if tasks < min_tasks:
+                    min_tasks = tasks
+                    best_server = server
+        except requests.RequestException:
+            continue
     return best_server
 
-def offload_task_to_server(server_url, matrix_size, matrix_a, matrix_b):
-    payload = {
-        "matrixSize": matrix_size,
-        "matrixA": matrix_a,
-        "matrixB": matrix_b
-    }
+def submit_to_server(server_url, data):
     try:
-        response = requests.post(f"{server_url}/matrices", json=payload)
+        response = requests.post(f"{server_url}/matrices", json=data)
         if response.status_code == 200:
-            result = response.json()
-            execution_time = result['execution_time']
-            print(f"{server_url} - {execution_time} s")
-
-            # Log
-            with lock:
-                server_task_count[server_url] += 1
-                server_task_times[server_url].append(execution_time)
-                log_to_csv()
-
+            return response
         else:
-            print(f"Failed to offload task to {server_url}")
-    except requests.ConnectionError:
-        print(f"Failed to connect to {server_url}")
+            return None
+    except requests.RequestException:
+        return None
 
 def send_to_cloud_server(matrix_a, matrix_b):
     data = {
@@ -127,8 +109,8 @@ def send_to_cloud_server(matrix_a, matrix_b):
         'matrixB': matrix_b
     }
 
-    cloud_server_url = f"http://{os.getenv('serverIP')}:5000/receive_task"
-    print(cloud_server_url)
+    cloud_server_url = f"http://{os.getenv('serverIP')}:5000/matrices"
+
     headers = {'Content-Type': 'application/json'}
     response = requests.post(cloud_server_url, data=json.dumps(data), headers=headers)
 
@@ -142,34 +124,41 @@ def send_to_cloud_server(matrix_a, matrix_b):
 @app.route('/post_task', methods=['POST'])
 def submit_task():
     data = request.get_json()
-    matrix_size = data.get('matrixSize')
-    matrix_a = data.get('matrixA')
-    matrix_b = data.get('matrixB')
-    task_queue.put((matrix_size, matrix_a, matrix_b))
-    return jsonify({"message": "Task added to the queue"}), 200
-
-def task_consumer():
-    while True:
-        if not task_queue.empty():
-            matrix_size, matrix_a, matrix_b = task_queue.get()
-            best_server = find_best_server()
-            if best_server:
-                offload_task_to_server(best_server, matrix_size, matrix_a, matrix_b)
+    # print(data['guid'])
+    best_server = find_least_busy_server()
+    if best_server:
+        response = submit_to_server(best_server, data)
+        if response:
+            result = response.json()
+            print(result)
+            execution_time = result['execution_time']
+            print(f"{best_server} - {execution_time} s")
+            with lock:
+                server_task_count[best_server] += 1
+                log_to_csv()
+            return jsonify({"message": "Task submitted to server", "server": best_server}), 200
+        else:
+            second_best_server = find_least_busy_server(exclude=best_server)
+            if second_best_server:
+                response = submit_to_server(second_best_server, data)
+                if response:
+                    result = response.json()
+                    execution_time = result['execution_time']
+                    print(f"{second_best_server} - {execution_time} s")
+                    with lock:
+                        server_task_count[second_best_server] += 1
+                        log_to_csv()
+                    return jsonify({"message": "Task submitted to server on retry", "server": second_best_server}), 200
             else:
-                print("No local servers are available. Offloading task to cloud server.")
-                send_to_cloud_server(matrix_a, matrix_b)
-            task_queue.task_done()
+                #PROBLEM HERE? nu stiu daca imi parseaza bine + ca oricum trb sa le fac in string
+                send_to_cloud_server(data['matrixA'], data['matrixB'])
+                return jsonify({"message": "Task submitted to cloud"}), 200
+    else:
+        send_to_cloud_server(data['matrixA'], data['matrixB'])
+        return jsonify({"message": "Task submitted to cloud"}), 200
 
 if __name__ == '__main__':
-    #monitoring thread
     monitor_thread = Thread(target=check_server_status)
     monitor_thread.start()
-
-    #consumer thread
-    consumer_thread = Thread(target=task_consumer)
-    consumer_thread.start()
-
     app.run(port=4000)
-
     monitor_thread.join()
-    consumer_thread.join()
