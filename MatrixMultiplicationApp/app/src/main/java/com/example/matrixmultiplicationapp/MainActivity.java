@@ -24,8 +24,8 @@ import okhttp3.Response;
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MainActivity";
-    private static final int MIN_MATRIX_SIZE = 10;
-    private static final int MAX_MATRIX_SIZE = 100;
+    private static final int MIN_MATRIX_SIZE = 50;
+    private static final int MAX_MATRIX_SIZE = 300;
     private static final int TASK_INTERVAL_MS = 500;
     private final Handler mHandler = new Handler(Looper.getMainLooper());
     private final Random mRandom = new Random();

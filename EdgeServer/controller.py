@@ -10,9 +10,9 @@ app = Flask(__name__)
 server_status = {}
 server_load = {}
 all_servers = [
-    'http://127.0.0.1:5004',
-    'http://127.0.0.1:5005',
-    'http://127.0.0.1:5006'
+    'http://127.0.0.1:5001',
+    'http://127.0.0.1:5002',
+    'http://127.0.0.1:5003'
 ]
 active_servers = []
 lock = Lock()
@@ -103,12 +103,7 @@ def submit_to_server(server_url, data):
     except requests.RequestException:
         return None
 
-def send_to_cloud_server(matrix_a, matrix_b):
-    data = {
-        'matrixA': matrix_a,
-        'matrixB': matrix_b
-    }
-
+def send_to_cloud_server(data):
     cloud_server_url = f"http://{os.getenv('serverIP')}:5000/matrices"
 
     headers = {'Content-Type': 'application/json'}
@@ -124,8 +119,14 @@ def send_to_cloud_server(matrix_a, matrix_b):
 @app.route('/post_task', methods=['POST'])
 def submit_task():
     data = request.get_json()
-    # print(data['guid'])
     best_server = find_least_busy_server()
+    if best_server and len(active_servers) == 1:  
+        task_target = server_task_count[best_server] % 2 
+        if task_target == 0:
+            response = send_to_cloud_server(data)
+        else:
+            response = submit_to_server(best_server, data)
+        return jsonify({"message": "Task submitted based on server availability"}), 200
     if best_server:
         response = submit_to_server(best_server, data)
         if response:
@@ -150,11 +151,10 @@ def submit_task():
                         log_to_csv()
                     return jsonify({"message": "Task submitted to server on retry", "server": second_best_server}), 200
             else:
-                #PROBLEM HERE? nu stiu daca imi parseaza bine + ca oricum trb sa le fac in string
-                send_to_cloud_server(data['matrixA'], data['matrixB'])
+                send_to_cloud_server(data)
                 return jsonify({"message": "Task submitted to cloud"}), 200
     else:
-        send_to_cloud_server(data['matrixA'], data['matrixB'])
+        send_to_cloud_server(data)
         return jsonify({"message": "Task submitted to cloud"}), 200
 
 if __name__ == '__main__':
