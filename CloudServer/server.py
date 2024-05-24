@@ -1,8 +1,5 @@
 from flask import Flask, request, jsonify
 from utils import string_to_matrix, matrix_multiplication
-import psutil
-import os
-import threading
 app = Flask(__name__)
 
 @app.route('/matrices', methods=['POST'])
