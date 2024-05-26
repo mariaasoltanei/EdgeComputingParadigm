@@ -10,9 +10,9 @@ app = Flask(__name__)
 server_status = {}
 server_load = {}
 all_servers = [
-    'http://127.0.0.1:5001',
-    'http://127.0.0.1:5002',
-    'http://127.0.0.1:5003'
+    'http://127.0.0.1:5004',
+    'http://127.0.0.1:5005',
+    'http://127.0.0.1:5006'
 ]
 active_servers = []
 lock = Lock()
@@ -93,9 +93,9 @@ def find_least_busy_server(exclude=None):
             continue
     return best_server
 
-def submit_to_server(server_url, data):
+def submit_to_server(server_url, data, endpoint):
     try:
-        response = requests.post(f"{server_url}/matrices", json=data)
+        response = requests.post(f"{server_url}/{endpoint}", json=data)
         if response.status_code == 200:
             return response
         else:
@@ -116,19 +116,21 @@ def send_to_cloud_server(data):
         print('Failed to offload task to cloud')
         return False
 
-@app.route('/post_task', methods=['POST'])
+@app.route('/receiveSensorData', methods=['POST'])
 def submit_task():
     data = request.get_json()
+    endpoint = data['sensorType']
+    print(f"Received data from sensor: {data}")
     best_server = find_least_busy_server()
     if best_server and len(active_servers) == 1:  
         task_target = server_task_count[best_server] % 2 
         if task_target == 0:
             response = send_to_cloud_server(data)
         else:
-            response = submit_to_server(best_server, data)
+            response = submit_to_server(best_server, endpoint)
         return jsonify({"message": "Task submitted based on server availability"}), 200
     if best_server:
-        response = submit_to_server(best_server, data)
+        response = submit_to_server(best_server, data, endpoint)
         if response:
             result = response.json()
             print(result)
@@ -141,7 +143,7 @@ def submit_task():
         else:
             second_best_server = find_least_busy_server(exclude=best_server)
             if second_best_server:
-                response = submit_to_server(second_best_server, data)
+                response = submit_to_server(second_best_server, data, endpoint)
                 if response:
                     result = response.json()
                     execution_time = result['execution_time']
