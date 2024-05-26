@@ -10,9 +10,9 @@ app = Flask(__name__)
 server_status = {}
 server_load = {}
 all_servers = [
-    'http://127.0.0.1:5004',
-    'http://127.0.0.1:5005',
-    'http://127.0.0.1:5006'
+    'http://127.0.0.1:5003',
+    'http://127.0.0.1:5002',
+    #'http://127.0.0.1:5006'
 ]
 active_servers = []
 lock = Lock()
@@ -120,7 +120,7 @@ def send_to_cloud_server(data):
 def submit_task():
     data = request.get_json()
     endpoint = data['sensorType']
-    print(f"Received data from sensor: {data}")
+    print(f"Received data from sensor: {endpoint}")
     best_server = find_least_busy_server()
     if best_server and len(active_servers) == 1:  
         task_target = server_task_count[best_server] % 2 
@@ -133,9 +133,7 @@ def submit_task():
         response = submit_to_server(best_server, data, endpoint)
         if response:
             result = response.json()
-            print(result)
-            execution_time = result['execution_time']
-            print(f"{best_server} - {execution_time} s")
+            print(f"{best_server}")
             with lock:
                 server_task_count[best_server] += 1
                 log_to_csv()
@@ -146,8 +144,7 @@ def submit_task():
                 response = submit_to_server(second_best_server, data, endpoint)
                 if response:
                     result = response.json()
-                    execution_time = result['execution_time']
-                    print(f"{second_best_server} - {execution_time} s")
+                    print(f"{second_best_server}")
                     with lock:
                         server_task_count[second_best_server] += 1
                         log_to_csv()

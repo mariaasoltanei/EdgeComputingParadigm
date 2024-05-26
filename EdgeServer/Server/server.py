@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 import psutil
-import os
 import threading
+import os
 
 app = Flask(__name__)
 task_lock = threading.Lock()
@@ -26,10 +26,9 @@ def receiveGyroscopeData():
     with task_lock:
         active_tasks += 1
     data = request.get_json()
-    print(data['x'])
     with task_lock:
         active_tasks -= 1
-    return jsonify({'x': data['x']}), 200
+    return jsonify({'gyroscopeData': data['gyroscopeData']}), 200
 
 @app.route('/accelerometer', methods=['POST'])
 def receiveAccelerometerData():
@@ -37,11 +36,10 @@ def receiveAccelerometerData():
     with task_lock:
         active_tasks += 1
     data = request.get_json()
-    print(data['x'])
     with task_lock:
         active_tasks -= 1
-    return jsonify({'x': data['x']}), 200
+    return jsonify({'accelerometerData': data['accelerometerData']}), 200
 
 if __name__ == '__main__':
-    # port = int(os.getenv('FLASK_PORT', 5001))
+    port = int(os.getenv('FLASK_PORT', 5001))
     app.run(host='0.0.0.0', port=port)
