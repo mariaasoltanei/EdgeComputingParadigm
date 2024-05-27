@@ -74,7 +74,7 @@ def check_server_status():
                 except requests.ConnectionError:
                     server_load[server] = None
 
-        time.sleep(5) 
+        time.sleep(10) 
 
 def find_least_busy_server(exclude=None):
     min_tasks = float('inf')
@@ -105,6 +105,7 @@ def submit_to_server(server_url, data):
 
 def send_to_cloud_server(data):
     cloud_server_url = f"http://{os.getenv('serverIP')}:5000/matrices"
+ 
 
     headers = {'Content-Type': 'application/json'}
     response = requests.post(cloud_server_url, data=json.dumps(data), headers=headers)
