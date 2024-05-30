@@ -11,6 +11,10 @@ active_tasks = 0
 def status():
     return jsonify({"status": "running"}), 200
 
+# Load endpoint to check the CPU and memory usage of the server
+# - CPU usage is calculated using psutil.cpu_percent(interval=1)
+# - memory usage is calculated using psutil.virtual_memory().percent
+# - number of active tasks is also returned
 @app.route('/load', methods=['GET'])
 def load():
     cpu_usage = psutil.cpu_percent(interval=1)
@@ -27,7 +31,7 @@ def test():
         active_tasks += 1
     data = request.get_json()
 
-    matrix_size = int(data['matrixSize'])
+    # matrix_size = int(data['matrixSize'])
     matrix_a = string_to_matrix(data['matrixA'])
     matrix_b = string_to_matrix(data['matrixB'])
 

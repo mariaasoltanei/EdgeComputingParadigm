@@ -9,6 +9,7 @@ import os
 app = Flask(__name__)
 server_status = {}
 server_load = {}
+# Initial list of all servers that can be used to offload tasks
 all_servers = [
     'http://127.0.0.1:5001',
     'http://127.0.0.1:5002',
@@ -17,6 +18,7 @@ all_servers = [
 active_servers = []
 lock = Lock()
 
+# Initialize server_log.csv file
 log_file = 'server_log.csv'
 server_downtime = {server: 0 for server in all_servers}
 server_task_count = {server: 0 for server in all_servers}
@@ -29,6 +31,7 @@ if not os.path.exists(log_file):
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
 
+# Update the server_log.csv file with the latest data
 def log_to_csv():
     with open(log_file, 'w', newline='') as csvfile:
         fieldnames = ['server', 'task_count', 'execution_time', 'downtime']
@@ -42,6 +45,11 @@ def log_to_csv():
                 'downtime': server_downtime[server]
             })
 
+# Check the status of each server
+# - calling the /status endpoint of each server
+# - updates the active_servers list with the servers that are running so that they can be used to offload tasks
+# - removes servers from active_servers if they are not running
+# - updates the server_downtime dictionary for server_log.csv
 def check_server_status():
     while True:
         with lock:
@@ -76,6 +84,9 @@ def check_server_status():
 
         time.sleep(10) 
 
+# Find the least busy server 
+# - calling the /load endpoint of each server
+# - returns the server that has the least number of active tasks
 def find_least_busy_server(exclude=None):
     min_tasks = float('inf')
     best_server = None
@@ -93,6 +104,9 @@ def find_least_busy_server(exclude=None):
             continue
     return best_server
 
+# Submit the task to the server
+# - calling the /matrices endpoint of the server - matrices will be multiplied if sent to this endpoint
+# - returns the response from the server if the task was submitted successfully
 def submit_to_server(server_url, data):
     try:
         response = requests.post(f"{server_url}/matrices", json=data)
@@ -103,6 +117,7 @@ def submit_to_server(server_url, data):
     except requests.RequestException:
         return None
 
+# Send the task to the cloud server
 def send_to_cloud_server(data):
     cloud_server_url = f"http://{os.getenv('serverIP')}:5000/matrices"
  
@@ -117,6 +132,11 @@ def send_to_cloud_server(data):
         print('Failed to offload task to cloud')
         return False
 
+# Endpoint that the client will use to submit tasks
+# - checks the status of each server
+# - finds the least busy server
+# - submits the task to the server
+# - if the server is not available, retries with the next least busy server and then offloads the task to the cloud server if all servers are busy
 @app.route('/post_task', methods=['POST'])
 def submit_task():
     data = request.get_json()
